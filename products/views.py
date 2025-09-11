@@ -100,3 +100,11 @@ class Show_Category(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+
+class product_details(APIView):
+    def get(self, request, pk):
+        product = Product.objects.get(pk=pk)
+        serializer = ProductSerializer(product)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
