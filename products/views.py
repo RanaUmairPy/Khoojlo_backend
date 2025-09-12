@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Product, ProductImage
 from .Serializers import ProductSerializer
-
+from django.db.models import Q
 class ProductAPIView(APIView):
 
     # CREATE
@@ -106,5 +106,16 @@ class product_details(APIView):
         product = Product.objects.get(pk=pk)
         serializer = ProductSerializer(product)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
+    
+class SearchProduct(APIView):
+    def get(self, request, query):
+        if query:
+            search_results = Product.objects.filter(Q(name__icontains=query) |
+                                                    Q(description__icontains=query) |
+                                                    Q(category__icontains=query) |
+                                                    Q(price__icontains=query)
+                                                    )
+            serializer = ProductSerializer(search_results, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "No Product Found"}, status=status.HTTP_400_BAD_REQUEST)
