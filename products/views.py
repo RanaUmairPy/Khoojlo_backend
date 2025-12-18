@@ -2,8 +2,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Product, ProductImage
-from .Serializers import ProductSerializer
+from .models import Product, ProductImage, Order, OrderItem
+from .Serializers import ProductSerializer, OrderSerializer, OrderItemSerializer
 from django.db.models import Q
 class ProductAPIView(APIView):
 
@@ -119,3 +119,72 @@ class SearchProduct(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response({"error": "No Product Found"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.permissions import AllowAny
+
+@method_decorator(csrf_exempt, name='dispatch')
+class OrderAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    
+    def post(self, request):
+        serializer = OrderSerializer(data=request.data)
+        if serializer.is_valid():
+            order = serializer.save()
+            
+            items = request.data.get('items', [])
+            for item in items:
+                try:
+                    product = Product.objects.get(id=item.get('product'))
+                    OrderItem.objects.create(
+                        order=order,
+                        product=product,
+                        quantity=item.get('quantity'),
+                        price=item.get('price')
+                    )
+                except Product.DoesNotExist:
+                    continue
+
+            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def get(self, request):
+        orders = Order.objects.all()
+        serializer = OrderSerializer(orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class OrderDetailAPIView(APIView):
+    def get_object(self, pk):
+        try:
+            return Order.objects.get(pk=pk)
+        except Order.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        order = self.get_object(pk)
+        if not order:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = OrderSerializer(order)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        order = self.get_object(pk)
+        if not order:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = OrderSerializer(order, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        order = self.get_object(pk)
+        if not order:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+        order.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
