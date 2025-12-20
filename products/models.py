@@ -14,6 +14,9 @@ class Product(models.Model):
     CATEGORY_CHOICES = [
     ('Bags', 'Bags'),
     ('Shoes', 'Shoes'),
+    ('Belts', 'Belts'),
+    ('Leather Jackets', 'Leather Jackets'),
+    ('Suit Jackets', 'Suit Jackets'),
     ]
 
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES)
